@@ -3,26 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Minimal Dashboard con D3.js</title>
+  <title>Dashboard Avanzado de Compras</title>
   <link rel="stylesheet" href="index.css"/>
   <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
   <div class="dashboard">
     <div class="header">
-      <h1>Dashboard de Compras</h1>
-      <p>Visualización de género, edad y categorías</p>
+      <h1>Dashboard Avanzado de Compras</h1>
+      <p>Análisis completo de patrones de consumo por género, edad y categorías</p>
     </div>
 
-    <!-- Puedes agregar tarjetas de estadísticas si lo deseas -->
+    <!-- Tarjetas de estadísticas -->
     <div class="stats-grid">
-      
+      <div class="stat-card">
+        <div class="stat-value" id="total-customers">-</div>
+        <div class="stat-label">Total Clientes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="total-revenue">-</div>
+        <div class="stat-label">Ingresos Totales</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="avg-purchase">-</div>
+        <div class="stat-label">Compra Promedio</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="top-category">-</div>
+        <div class="stat-label">Categoría Top</div>
+      </div>
     </div>
 
     <div class="charts-grid">
+      <!-- Sunburst Chart -->
       <div class="chart-container full-width">
-        <div class="chart-title">Distribución por Género → Edad → Categoría</div>
-        <div id="chart"></div>
+        <div class="chart-title">Distribución Jerárquica: Género → Edad → Categoría</div>
+        <div id="sunburst"></div>
+      </div>
+
+      <!-- Gráfica de Barras por Género -->
+      <div class="chart-container">
+        <div class="chart-title">Ventas Totales por Género</div>
+        <div id="gender-chart"></div>
+      </div>
+
+      <!-- Mapa de Calor -->
+      <div class="chart-container">
+        <div class="chart-title">Preferencias por Edad y Categoría</div>
+        <div id="heatmap"></div>
+      </div>
+
+      <!-- Gráfica de Líneas - Métodos de Pago -->
+      <div class="chart-container full-width">
+        <div class="chart-title">Tendencias de Métodos de Pago por Mes</div>
+        <div id="payment-trends"></div>
       </div>
     </div>
   </div>
