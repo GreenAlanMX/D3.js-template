@@ -37,13 +37,15 @@ d3.csv("customer_shopping_data.csv").then(data => {
   createMonthlyTrends(globalData);
 });
 
-// Function to update statistics
+// Function to update statistics - CORREGIDO
 function updateStats(data) {
   const totalCustomers = data.length;
-  const totalRevenue = d3.sum(data, d => d.price);
+  // CORRECCIÓN: Calcular el revenue total como quantity * price
+  const totalRevenue = d3.sum(data, d => d.quantity * d.price);
   const avgPurchase = totalRevenue / totalCustomers;
-  const categoryCount = d3.rollup(data, v => v.length, d => d.category);
-  const topCategory = Array.from(categoryCount.entries()).sort((a, b) => b[1] - a[1])[0][0];
+  // CORRECCIÓN: También calcular por total revenue para la categoría top
+  const categoryRevenue = d3.rollup(data, v => d3.sum(v, d => d.quantity * d.price), d => d.category);
+  const topCategory = Array.from(categoryRevenue.entries()).sort((a, b) => b[1] - a[1])[0][0];
 
   d3.select("#total-customers").text(totalCustomers.toLocaleString());
   d3.select("#total-revenue").text(`$${totalRevenue.toLocaleString()}`);
@@ -51,7 +53,7 @@ function updateStats(data) {
   d3.select("#top-category").text(topCategory);
 }
 
-// 1. Sunburst Chart
+// 1. Sunburst Chart - CORREGIDO
 function createSunburstChart(data) {
   const width = 600;
   const height = 600;
@@ -171,13 +173,14 @@ function createSunburstChart(data) {
   }
 }
 
-// 2. Bar Chart by Gender
+// 2. Bar Chart by Gender - CORREGIDO
 function createGenderChart(data) {
   const margin = {top: 20, right: 30, bottom: 40, left: 60};
   const width = 400 - margin.left - margin.right;
   const height = 300 - margin.bottom - margin.top;
 
-  const genderData = Array.from(d3.rollup(data, v => d3.sum(v, d => d.price), d => d.gender));
+  // CORRECCIÓN: Usar quantity * price para calcular el revenue por género
+  const genderData = Array.from(d3.rollup(data, v => d3.sum(v, d => d.quantity * d.price), d => d.gender));
 
   const svg = d3.select("#gender-chart").append("svg")
     .attr("width", width + margin.left + margin.right)
@@ -229,7 +232,7 @@ function createGenderChart(data) {
     .call(d3.axisLeft(y).tickFormat(d => `$${d/1000}K`));
 }
 
-// 3. Heatmap
+// 3. Heatmap - CORREGIDO
 function createHeatmap(data) {
   const margin = {top: 50, right: 100, bottom: 60, left: 80};
   const width = 450 - margin.left - margin.right;
@@ -243,7 +246,8 @@ function createHeatmap(data) {
   ageRanges.forEach(ageRange => {
     categories.forEach(category => {
       const filtered = data.filter(d => getAgeRange(d.age) === ageRange && d.category === category);
-      const value = d3.sum(filtered, d => d.price);
+      // CORRECCIÓN: Usar quantity * price para el cálculo del value
+      const value = d3.sum(filtered, d => d.quantity * d.price);
       heatmapData.push({ageRange, category, value});
     });
   });
@@ -300,7 +304,7 @@ function createHeatmap(data) {
     .call(d3.axisLeft(y));
 }
 
-// 4. Monthly Purchase Trends
+// 4. Monthly Purchase Trends - CORREGIDO
 function createMonthlyTrends(data) {
   const margin = {top: 20, right: 80, bottom: 60, left: 80};
   const width = 900 - margin.left - margin.right;
@@ -366,9 +370,9 @@ function createMonthlyTrends(data) {
       filteredData = data.filter(d => d.invoice_date.getFullYear() == selectedYear);
     }
 
-    // Process monthly data
+    // Process monthly data - CORRECCIÓN: Usar quantity * price
     const monthlyData = d3.rollup(filteredData, 
-      v => d3.sum(v, d => d.price), 
+      v => d3.sum(v, d => d.quantity * d.price), 
       d => d.invoice_date.getMonth()
     );
 
@@ -382,7 +386,7 @@ function createMonthlyTrends(data) {
 
     // Update axes
     xAxis.transition().duration(750).call(d3.axisBottom(x));
-    yAxis.transition().duration(750).call(d3.axisLeft(y).tickFormat(d => `$${d/1000}K`));
+    yAxis.transition().duration(750).call(d3.axisLeft(y).tickFormat(d => `${d/1000}K`));
 
     // Update area
     areaPath
@@ -459,7 +463,7 @@ function createMonthlyTrends(data) {
   updateChart("all");
 }
 
-// Helper function to build hierarchy for sunburst
+// Helper function to build hierarchy for sunburst - CORREGIDO
 function buildHierarchy(data) {
   const root = { name: "root", children: [] };
 
@@ -472,7 +476,8 @@ function buildHierarchy(data) {
       const ageNode = { name: ageRange, children: [] };
 
       for (const [category, records] of categoryMap.entries()) {
-        const total = d3.sum(records, d => +d.price);
+        // CORRECCIÓN: Usar quantity * price para el total
+        const total = d3.sum(records, d => d.quantity * d.price);
         ageNode.children.push({ name: category, value: total });
       }
 
