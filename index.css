@@ -1,4 +1,4 @@
-/* Estilos Generales */
+/* General Styles */
 * {
   margin: 0;
   padding: 0;
@@ -12,7 +12,7 @@ body {
   padding: 20px;
 }
 
-/* Contenedor Principal */
+/* Main Container */
 .dashboard {
   max-width: 1600px;
   margin: 0 auto;
@@ -23,7 +23,7 @@ body {
   backdrop-filter: blur(10px);
 }
 
-/* Encabezado */
+/* Header */
 .header {
   text-align: center;
   margin-bottom: 40px;
@@ -46,7 +46,7 @@ body {
   font-weight: 300;
 }
 
-/* Tarjetas de Estadísticas */
+/* Statistics Cards */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -101,7 +101,7 @@ body {
   letter-spacing: 1px;
 }
 
-/* Contenedor de Gráficas */
+/* Charts Container */
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -135,12 +135,47 @@ body {
   border-bottom: 2px solid #ecf0f1;
 }
 
-/* Gráfica que ocupa todo el ancho */
+/* Full width chart */
 .full-width {
   grid-column: 1 / -1;
 }
 
-/* Estilos SVG */
+/* Year Filter Styles */
+.year-filter {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 15px;
+}
+
+.year-filter label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1.1em;
+}
+
+.year-filter select {
+  padding: 8px 15px;
+  border: 2px solid #e0e6ed;
+  border-radius: 8px;
+  background: white;
+  font-size: 1em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.year-filter select:hover {
+  border-color: #667eea;
+}
+
+.year-filter select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* SVG Styles */
 svg {
   display: block;
   margin: 0 auto;
@@ -165,7 +200,7 @@ svg {
   z-index: 1000;
 }
 
-/* Estilos para elementos interactivos */
+/* Interactive element styles */
 .clickable {
   cursor: pointer;
   transition: all 0.2s ease;
@@ -176,7 +211,7 @@ svg {
   stroke-width: 2px;
 }
 
-/* Estilos para leyendas */
+/* Legend styles */
 .legend {
   font-size: 12px;
   font-family: 'Segoe UI', sans-serif;
@@ -187,7 +222,7 @@ svg {
   stroke-width: 1px;
 }
 
-/* Estilos para ejes */
+/* Axis styles */
 .axis {
   font-size: 11px;
   font-family: 'Segoe UI', sans-serif;
@@ -205,7 +240,7 @@ svg {
   fill: #666;
 }
 
-/* Estilos para barras */
+/* Bar styles */
 .bar {
   transition: all 0.3s ease;
 }
@@ -215,7 +250,7 @@ svg {
   stroke-width: 2px;
 }
 
-/* Estilos para líneas */
+/* Line styles */
 .line {
   fill: none;
   stroke-width: 3px;
@@ -226,7 +261,7 @@ svg {
   stroke-width: 5px;
 }
 
-/* Estilos para círculos en líneas */
+/* Dot styles for lines */
 .dot {
   stroke: #fff;
   stroke-width: 2px;
@@ -238,7 +273,17 @@ svg {
   stroke-width: 3px;
 }
 
-/* Responsivo */
+/* Area chart styles */
+.area {
+  fill-opacity: 0.3;
+  transition: fill-opacity 0.3s ease;
+}
+
+.area:hover {
+  fill-opacity: 0.5;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
   .charts-grid {
     grid-template-columns: 1fr;
@@ -254,6 +299,11 @@ svg {
   
   .dashboard {
     padding: 20px;
+  }
+  
+  .year-filter {
+    flex-direction: column;
+    gap: 10px;
   }
 }
 

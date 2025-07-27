@@ -1,9 +1,9 @@
-// Variables globales
+// Global variables
 let globalData = [];
 const tooltip = d3.select("body").append("div")
   .attr("class", "tooltip");
 
-// Colores consistentes
+// Consistent colors
 const colorScheme = {
   gender: d3.scaleOrdinal()
     .domain(["Male", "Female"])
@@ -11,14 +11,14 @@ const colorScheme = {
   category: d3.scaleOrdinal()
     .domain(["Clothing", "Shoes", "Books", "Cosmetics", "Food & Beverage", "Toys", "Technology", "Souvenir"])
     .range(d3.schemeSet3),
-  payment: d3.scaleOrdinal()
-    .domain(["Credit Card", "Debit Card", "Cash"])
-    .range(["#ff7675", "#74b9ff", "#00cec9"])
+  monthly: d3.scaleOrdinal()
+    .domain(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])
+    .range(d3.schemeCategory10)
 };
 
-// Carga de datos y inicialización
+// Data loading and initialization
 d3.csv("customer_shopping_data.csv").then(data => {
-  // Limpieza y procesamiento de datos
+  // Data cleaning and processing
   globalData = data.map(d => ({
     ...d,
     age: +d.age,
@@ -27,17 +27,17 @@ d3.csv("customer_shopping_data.csv").then(data => {
     invoice_date: new Date(d.invoice_date)
   }));
 
-  // Actualizar estadísticas
+  // Update statistics
   updateStats(globalData);
   
-  // Crear todas las visualizaciones
+  // Create all visualizations
   createSunburstChart(globalData);
   createGenderChart(globalData);
   createHeatmap(globalData);
-  createPaymentTrends(globalData);
+  createMonthlyTrends(globalData);
 });
 
-// Función para actualizar estadísticas
+// Function to update statistics
 function updateStats(data) {
   const totalCustomers = data.length;
   const totalRevenue = d3.sum(data, d => d.price);
@@ -97,7 +97,7 @@ function createSunburstChart(data) {
     .style("cursor", "pointer")
     .on("mouseover", function(event, d) {
       tooltip.transition().duration(200).style("opacity", .9);
-      tooltip.html(`${d.ancestors().map(d => d.data.name).reverse().join(" → ")}<br/>Valor: $${d.value.toLocaleString()}`)
+      tooltip.html(`${d.ancestors().map(d => d.data.name).reverse().join(" → ")}<br/>Value: $${d.value.toLocaleString()}`)
         .style("left", (event.pageX + 10) + "px")
         .style("top", (event.pageY - 28) + "px");
     })
@@ -171,7 +171,7 @@ function createSunburstChart(data) {
   }
 }
 
-// 2. Gráfica de Barras por Género
+// 2. Bar Chart by Gender
 function createGenderChart(data) {
   const margin = {top: 20, right: 30, bottom: 40, left: 60};
   const width = 400 - margin.left - margin.right;
@@ -207,7 +207,7 @@ function createGenderChart(data) {
     .attr("fill", d => colorScheme.gender(d[0]))
     .on("mouseover", function(event, d) {
       tooltip.transition().duration(200).style("opacity", .9);
-      tooltip.html(`${d[0]}<br/>Ventas: $${d[1].toLocaleString()}`)
+      tooltip.html(`${d[0]}<br/>Sales: $${d[1].toLocaleString()}`)
         .style("left", (event.pageX + 10) + "px")
         .style("top", (event.pageY - 28) + "px");
     })
@@ -229,13 +229,13 @@ function createGenderChart(data) {
     .call(d3.axisLeft(y).tickFormat(d => `$${d/1000}K`));
 }
 
-// 3. Mapa de Calor
+// 3. Heatmap
 function createHeatmap(data) {
   const margin = {top: 50, right: 100, bottom: 60, left: 80};
   const width = 450 - margin.left - margin.right;
   const height = 300 - margin.top - margin.bottom;
 
-  // Procesar datos para el mapa de calor
+  // Process data for heatmap
   const ageRanges = ["<20", "20-29", "30-39", "40-49", "50+"];
   const categories = [...new Set(data.map(d => d.category))];
   
@@ -282,7 +282,7 @@ function createHeatmap(data) {
     .attr("stroke-width", 1)
     .on("mouseover", function(event, d) {
       tooltip.transition().duration(200).style("opacity", .9);
-      tooltip.html(`${d.ageRange} años<br/>${d.category}<br/>Ventas: $${d.value.toLocaleString()}`)
+      tooltip.html(`${d.ageRange} years<br/>${d.category}<br/>Sales: $${d.value.toLocaleString()}`)
         .style("left", (event.pageX + 10) + "px")
         .style("top", (event.pageY - 28) + "px");
     })
@@ -300,120 +300,166 @@ function createHeatmap(data) {
     .call(d3.axisLeft(y));
 }
 
-// 4. Tendencias de Métodos de Pago
-function createPaymentTrends(data) {
-  const margin = {top: 20, right: 120, bottom: 60, left: 60};
-  const width = 800 - margin.left - margin.right;
-  const height = 350 - margin.top - margin.bottom;
+// 4. Monthly Purchase Trends
+function createMonthlyTrends(data) {
+  const margin = {top: 20, right: 80, bottom: 60, left: 80};
+  const width = 900 - margin.left - margin.right;
+  const height = 400 - margin.top - margin.bottom;
 
-  // Procesar datos por mes y método de pago
-  const monthlyData = d3.rollup(data,
-    v => d3.rollup(v, vv => vv.length, d => d.payment_method),
-    d => d3.timeFormat("%Y-%m")(d.invoice_date)
-  );
-
-  const paymentMethods = ["Credit Card", "Debit Card", "Cash"];
-  const months = Array.from(monthlyData.keys()).sort();
+  // Get available years and populate selector
+  const years = [...new Set(data.map(d => d.invoice_date.getFullYear()))].sort();
+  const yearSelect = d3.select("#year-select");
   
-  const lineData = paymentMethods.map(method => ({
-    method,
-    values: months.map(month => ({
-      month,
-      value: monthlyData.get(month)?.get(method) || 0
-    }))
-  }));
+  years.forEach(year => {
+    yearSelect.append("option").attr("value", year).text(year);
+  });
 
-  const svg = d3.select("#payment-trends").append("svg")
+  // Create SVG
+  const svg = d3.select("#monthly-trends").append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom);
 
   const g = svg.append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
+  // Scales
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const x = d3.scaleBand()
     .domain(months)
     .range([0, width])
     .padding(0.1);
 
   const y = d3.scaleLinear()
-    .domain([0, d3.max(lineData, d => d3.max(d.values, v => v.value))])
-    .nice()
     .range([height, 0]);
 
+  // Area generator
+  const area = d3.area()
+    .x(d => x(d.month) + x.bandwidth() / 2)
+    .y0(height)
+    .y1(d => y(d.value))
+    .curve(d3.curveMonotoneX);
+
+  // Line generator
   const line = d3.line()
     .x(d => x(d.month) + x.bandwidth() / 2)
     .y(d => y(d.value))
     .curve(d3.curveMonotoneX);
 
-  // Líneas
-  lineData.forEach((methodData, i) => {
-    g.append("path")
-      .datum(methodData.values)
-      .attr("class", "line")
-      .attr("fill", "none")
-      .attr("stroke", colorScheme.payment(methodData.method))
-      .attr("stroke-width", 3)
-      .attr("d", line);
+  // Axes
+  const xAxis = g.append("g")
+    .attr("class", "axis")
+    .attr("transform", `translate(0,${height})`);
 
-    // Puntos
-    g.selectAll(`.dot-${i}`)
-      .data(methodData.values)
-      .enter().append("circle")
-      .attr("class", `dot dot-${i} clickable`)
-      .attr("cx", d => x(d.month) + x.bandwidth() / 2)
-      .attr("cy", d => y(d.value))
-      .attr("r", 4)
-      .attr("fill", colorScheme.payment(methodData.method))
+  const yAxis = g.append("g")
+    .attr("class", "axis");
+
+  // Chart elements
+  const areaPath = g.append("path").attr("class", "area");
+  const linePath = g.append("path").attr("class", "line");
+  const dotsGroup = g.append("g").attr("class", "dots");
+
+  // Update function
+  function updateChart(selectedYear) {
+    let filteredData = data;
+    
+    if (selectedYear !== "all") {
+      filteredData = data.filter(d => d.invoice_date.getFullYear() == selectedYear);
+    }
+
+    // Process monthly data
+    const monthlyData = d3.rollup(filteredData, 
+      v => d3.sum(v, d => d.price), 
+      d => d.invoice_date.getMonth()
+    );
+
+    const chartData = months.map((month, i) => ({
+      month: month,
+      value: monthlyData.get(i) || 0
+    }));
+
+    // Update scales
+    y.domain([0, d3.max(chartData, d => d.value)]).nice();
+
+    // Update axes
+    xAxis.transition().duration(750).call(d3.axisBottom(x));
+    yAxis.transition().duration(750).call(d3.axisLeft(y).tickFormat(d => `$${d/1000}K`));
+
+    // Update area
+    areaPath
+      .datum(chartData)
+      .transition()
+      .duration(750)
+      .attr("d", area)
+      .attr("fill", "url(#gradient)")
+      .attr("fill-opacity", 0.6);
+
+    // Update line
+    linePath
+      .datum(chartData)
+      .transition()
+      .duration(750)
+      .attr("d", line)
+      .attr("stroke", "#667eea")
+      .attr("stroke-width", 3)
+      .attr("fill", "none");
+
+    // Update dots
+    const dots = dotsGroup.selectAll(".dot")
+      .data(chartData);
+
+    dots.exit().remove();
+
+    dots.enter().append("circle")
+      .attr("class", "dot clickable")
+      .attr("r", 0)
+      .merge(dots)
       .on("mouseover", function(event, d) {
         tooltip.transition().duration(200).style("opacity", .9);
-        tooltip.html(`${methodData.method}<br/>${d.month}<br/>Transacciones: ${d.value}`)
+        tooltip.html(`${d.month}<br/>Sales: ${d.value.toLocaleString()}`)
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 28) + "px");
       })
       .on("mouseout", function() {
         tooltip.transition().duration(500).style("opacity", 0);
-      });
+      })
+      .transition()
+      .duration(750)
+      .attr("cx", d => x(d.month) + x.bandwidth() / 2)
+      .attr("cy", d => y(d.value))
+      .attr("r", 5)
+      .attr("fill", "#667eea")
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 2);
+  }
+
+  // Create gradient for area
+  const gradient = svg.append("defs")
+    .append("linearGradient")
+    .attr("id", "gradient")
+    .attr("gradientUnits", "userSpaceOnUse")
+    .attr("x1", 0).attr("y1", height)
+    .attr("x2", 0).attr("y2", 0);
+
+  gradient.append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", "#667eea")
+    .attr("stop-opacity", 0.1);
+
+  gradient.append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", "#667eea")
+    .attr("stop-opacity", 0.8);
+
+  // Event listener for year filter
+  yearSelect.on("change", function() {
+    updateChart(this.value);
   });
 
-  // Ejes
-  g.append("g")
-    .attr("class", "axis")
-    .attr("transform", `translate(0,${height})`)
-    .call(d3.axisBottom(x))
-    .selectAll("text")
-    .style("text-anchor", "end")
-    .attr("dx", "-.8em")
-    .attr("dy", ".15em")
-    .attr("transform", "rotate(-45)");
-
-  g.append("g")
-    .attr("class", "axis")
-    .call(d3.axisLeft(y));
-
-  // Leyenda
-  const legend = svg.append("g")
-    .attr("class", "legend")
-    .attr("transform", `translate(${width + margin.left + 10}, ${margin.top})`);
-
-  paymentMethods.forEach((method, i) => {
-    const legendRow = legend.append("g")
-      .attr("transform", `translate(0, ${i * 20})`);
-
-    legendRow.append("rect")
-      .attr("width", 15)
-      .attr("height", 15)
-      .attr("fill", colorScheme.payment(method));
-
-    legendRow.append("text")
-      .attr("x", 20)
-      .attr("y", 12)
-      .text(method)
-      .style("font-size", "12px")
-      .attr("alignment-baseline", "middle");
-  });
+  // Initial chart render
+  updateChart("all");
 }
 
-// Función auxiliar para construir jerarquía del sunburst
+// Helper function to build hierarchy for sunburst
 function buildHierarchy(data) {
   const root = { name: "root", children: [] };
 
@@ -439,7 +485,7 @@ function buildHierarchy(data) {
   return root;
 }
 
-// Función auxiliar para convertir edad a rangos
+// Helper function to convert age to ranges
 function getAgeRange(age) {
   if (age < 20) return "<20";
   if (age < 30) return "20-29";

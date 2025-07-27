@@ -3,60 +3,66 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard Avanzado de Compras</title>
+  <title>Advanced Shopping Dashboard</title>
   <link rel="stylesheet" href="index.css"/>
   <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
   <div class="dashboard">
     <div class="header">
-      <h1>Dashboard Avanzado de Compras</h1>
-      <p>Análisis completo de patrones de consumo por género, edad y categorías</p>
+      <h1>Advanced Shopping Dashboard</h1>
+      <p>Complete analysis of consumption patterns by gender, age and categories</p>
     </div>
 
-    <!-- Tarjetas de estadísticas -->
+    <!-- Statistics cards -->
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-value" id="total-customers">-</div>
-        <div class="stat-label">Total Clientes</div>
+        <div class="stat-label">Total Customers</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" id="total-revenue">-</div>
-        <div class="stat-label">Ingresos Totales</div>
+        <div class="stat-label">Total Revenue</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" id="avg-purchase">-</div>
-        <div class="stat-label">Compra Promedio</div>
+        <div class="stat-label">Average Purchase</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" id="top-category">-</div>
-        <div class="stat-label">Categoría Top</div>
+        <div class="stat-label">Top Category</div>
       </div>
     </div>
 
     <div class="charts-grid">
       <!-- Sunburst Chart -->
       <div class="chart-container full-width">
-        <div class="chart-title">Distribución Jerárquica: Género → Edad → Categoría</div>
+        <div class="chart-title">Hierarchical Distribution: Gender → Age → Category</div>
         <div id="sunburst"></div>
       </div>
 
-      <!-- Gráfica de Barras por Género -->
+      <!-- Bar Chart by Gender -->
       <div class="chart-container">
-        <div class="chart-title">Ventas Totales por Género</div>
+        <div class="chart-title">Total Sales by Gender</div>
         <div id="gender-chart"></div>
       </div>
 
-      <!-- Mapa de Calor -->
+      <!-- Heatmap -->
       <div class="chart-container">
-        <div class="chart-title">Preferencias por Edad y Categoría</div>
+        <div class="chart-title">Preferences by Age and Category</div>
         <div id="heatmap"></div>
       </div>
 
-      <!-- Gráfica de Líneas - Métodos de Pago -->
+      <!-- Monthly Purchase Trends -->
       <div class="chart-container full-width">
-        <div class="chart-title">Tendencias de Métodos de Pago por Mes</div>
-        <div id="payment-trends"></div>
+        <div class="chart-title">Monthly Purchase Trends</div>
+        <div class="year-filter">
+          <label for="year-select">Filter by Year:</label>
+          <select id="year-select">
+            <option value="all">All Years</option>
+          </select>
+        </div>
+        <div id="monthly-trends"></div>
       </div>
     </div>
   </div>
