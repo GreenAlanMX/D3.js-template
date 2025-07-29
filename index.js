@@ -1,25 +1,28 @@
-// Global variables
-let globalData = [];
-const tooltip = d3.select("body").append("div")
-  .attr("class", "tooltip");
+// ---------------------------  index.js  (refactor)  ---------------------------
+// Global tooltip (re‑usable by all charts)
+const tooltip = d3.select("body").append("div").attr("class", "tooltip");
 
-// Consistent colors
+/* --------------------------------------------------------------------------
+ *  COLOR SCALES (shared)                                                     
+ * ----------------------------------------------------------------------- */
 const colorScheme = {
-  gender: d3.scaleOrdinal()
-    .domain(["Male", "Female"])
-    .range(["#667eea", "#764ba2"]),
-  category: d3.scaleOrdinal()
-    .domain(["Clothing", "Shoes", "Books", "Cosmetics", "Food & Beverage", "Toys", "Technology", "Souvenir"])
-    .range(d3.schemeSet3),
-  monthly: d3.scaleOrdinal()
-    .domain(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])
-    .range(d3.schemeCategory10)
+  gender: d3.scaleOrdinal(["#667eea", "#764ba2"]).domain(["Male", "Female"]),
+  category: d3.scaleOrdinal(d3.schemeSet3).domain([
+    "Clothing","Shoes","Books","Cosmetics","Food & Beverage",
+    "Toys","Technology","Souvenir"
+  ]),
+  monthly: d3.scaleOrdinal(d3.schemeCategory10).domain([
+    "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"
+  ])
 };
 
-// Data loading and initialization
-d3.csv("customer_shopping_data.csv").then(data => {
-  // Data cleaning and processing
-  globalData = data.map(d => ({
+/* --------------------------------------------------------------------------
+ *  DATA LOADING                                                             
+ * ----------------------------------------------------------------------- */
+let globalData = [];
+(async () => {
+  const raw = await d3.csv("customer_shopping_data.csv");
+  globalData = raw.map(d => ({
     ...d,
     age: +d.age,
     quantity: +d.quantity,
@@ -27,25 +30,28 @@ d3.csv("customer_shopping_data.csv").then(data => {
     invoice_date: new Date(d.invoice_date)
   }));
 
-  // Update statistics
   updateStats(globalData);
-  
-  // Create all visualizations
-  createSunburstChart(globalData);
+
+  // SUNBURST (new model) ---------------------------------------------------
+  const hierarchyData = buildHierarchy(globalData);   // gender → age range → category
+  const sunburstNode  = drawSunburst(hierarchyData);  // returns <svg>
+  document.getElementById("sunburst").appendChild(sunburstNode);
+
+  // OTHER CHARTS -----------------------------------------------------------
   createGenderChart(globalData);
   createHeatmap(globalData);
   createMonthlyTrends(globalData);
-});
+})();
 
-// Function to update statistics - CORREGIDO
-function updateStats(data) {
+/* --------------------------------------------------------------------------
+ *  KPI CARDS                                                                
+ * ----------------------------------------------------------------------- */
+function updateStats(data){
   const totalCustomers = data.length;
-  // CORRECCIÓN: Calcular el revenue total como quantity * price
-  const totalRevenue = d3.sum(data, d => d.quantity * d.price);
-  const avgPurchase = totalRevenue / totalCustomers;
-  // CORRECCIÓN: También calcular por total revenue para la categoría top
+  const totalRevenue   = d3.sum(data, d => d.quantity * d.price);
+  const avgPurchase    = totalRevenue / totalCustomers;
   const categoryRevenue = d3.rollup(data, v => d3.sum(v, d => d.quantity * d.price), d => d.category);
-  const topCategory = Array.from(categoryRevenue.entries()).sort((a, b) => b[1] - a[1])[0][0];
+  const topCategory    = Array.from(categoryRevenue).sort((a,b)=>b[1]-a[1])[0][0];
 
   d3.select("#total-customers").text(totalCustomers.toLocaleString());
   d3.select("#total-revenue").text(`$${totalRevenue.toLocaleString()}`);
@@ -53,82 +59,80 @@ function updateStats(data) {
   d3.select("#top-category").text(topCategory);
 }
 
-// 1. Sunburst Chart - CORREGIDO
-function createSunburstChart(data) {
-  const width = 600;
-  const height = 600;
-  const radius = Math.min(width, height) / 6;
+/* --------------------------------------------------------------------------
+ *  SUNBURST (Nuevo diseño tipo Observable)                                 
+ * ----------------------------------------------------------------------- */
+function drawSunburst(data){
+  const width = 228,
+        radius = width/8;
 
-  const hierarchyData = buildHierarchy(data);
-  
-  const svg = d3.select("#sunburst").append("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [-width / 2, -height / 2, width, width])
-    .style("font", "10px sans-serif");
-
-  const hierarchy = d3.hierarchy(hierarchyData)
-    .sum(d => d.value)
-    .sort((a, b) => b.value - a.value);
+  const color = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, data.children.length+1));
 
   const root = d3.partition()
-    .size([2 * Math.PI, hierarchy.height + 1])(hierarchy);
+      .size([2*Math.PI, d3.hierarchy(data).height+1])(
+        d3.hierarchy(data).sum(d=>d.value).sort((a,b)=>b.value-a.value)
+      );
 
-  root.each(d => d.current = d);
+  root.each(d=>d.current=d);
+
+  const svg = d3.create("svg")
+      .attr("viewBox", [-width/2, -width/2, width, width])
+      .style("font","3px sans-serif");
 
   const arc = d3.arc()
-    .startAngle(d => d.x0)
-    .endAngle(d => d.x1)
-    .padAngle(d => Math.min((d.x1 - d.x0) / 2, 0.005))
-    .padRadius(radius * 1.5)
-    .innerRadius(d => d.y0 * radius)
-    .outerRadius(d => Math.max(d.y0 * radius, d.y1 * radius - 1));
+      .startAngle(d=>d.x0)
+      .endAngle(d=>d.x1)
+      .padAngle(d=>Math.min((d.x1-d.x0)/2,0.005))
+      .padRadius(radius*1.5)
+      .innerRadius(d=>d.y0*radius)
+      .outerRadius(d=>Math.max(d.y0*radius, d.y1*radius-1));
 
   const path = svg.append("g")
     .selectAll("path")
     .data(root.descendants().slice(1))
     .join("path")
-    .attr("fill", d => {
-      while (d.depth > 1) d = d.parent;
-      return colorScheme.gender(d.data.name);
-    })
-    .attr("fill-opacity", d => arcVisible(d.current) ? (d.children ? 0.7 : 0.5) : 0)
-    .attr("stroke", "#fff")
-    .attr("stroke-width", 1)
-    .attr("d", d => arc(d.current))
-    .style("cursor", "pointer")
-    .on("mouseover", function(event, d) {
-      tooltip.transition().duration(200).style("opacity", .9);
-      tooltip.html(`${d.ancestors().map(d => d.data.name).reverse().join(" → ")}<br/>Value: $${d.value.toLocaleString()}`)
-        .style("left", (event.pageX + 10) + "px")
-        .style("top", (event.pageY - 28) + "px");
-    })
-    .on("mouseout", function() {
-      tooltip.transition().duration(500).style("opacity", 0);
-    })
-    .on("click", clicked);
+      .attr("fill", d=>{while(d.depth>1) d=d.parent; return color(d.data.name);})
+      .attr("fill-opacity", d=> arcVisible(d.current)? (d.children?0.6:0.4) : 0 )
+      .attr("pointer-events", d=> arcVisible(d.current)?"auto":"none")
+      .attr("d", d=>arc(d.current))
+      .on("click", clicked)
+      .on("mouseover", (e,d)=>{
+          tooltip.style("opacity",0.9)
+                 .html(`${d.ancestors().map(d=>d.data.name).reverse().join(" → ")}<br>$${d3.format(",.0f")(d.value)}`)
+                 .style("left", (e.pageX+10)+"px")
+                 .style("top",  (e.pageY-28)+"px");
+      })
+      .on("mouseout", ()=> tooltip.style("opacity",0));
+
+  path.append("title")
+      .text(d=>`${d.ancestors().map(d=>d.data.name).reverse().join("/")}\n$${d3.format(",.0f")(d.value)}`);
 
   const label = svg.append("g")
-    .attr("pointer-events", "none")
-    .attr("text-anchor", "middle")
-    .style("user-select", "none")
+      .attr("pointer-events","none")
+      .attr("text-anchor","middle")
+      .style("user-select","none")
     .selectAll("text")
     .data(root.descendants().slice(1))
     .join("text")
-    .attr("dy", "0.35em")
-    .attr("fill-opacity", d => +labelVisible(d.current))
-    .attr("transform", d => labelTransform(d.current))
-    .text(d => d.data.name);
+      .attr("dy","0.35em")
+      .attr("fill-opacity", d=>+labelVisible(d.current))
+      .attr("transform", d=>labelTransform(d.current))
+      .text(d=>d.data.name);
 
   const parent = svg.append("circle")
-    .datum(root)
-    .attr("r", radius)
-    .attr("fill", "none")
-    .attr("pointer-events", "all")
-    .style("cursor", "pointer")
-    .on("click", clicked);
+      .datum(root)
+      .attr("r", radius)
+      .attr("fill","none")
+      .attr("pointer-events","all")
+      .on("click", clicked);
 
+  /* ---------- helpers (fix “empty view”) ---------- */
   function clicked(event, p) {
+    // si el nodo no tiene hijos, retrocedemos
+    if (!p.children || !p.children.length) {
+      p = p.parent || root;
+    }
+
     parent.datum(p.parent || root);
 
     root.each(d => d.target = {
@@ -138,41 +142,34 @@ function createSunburstChart(data) {
       y1: Math.max(0, d.y1 - p.depth)
     });
 
-    const t = svg.transition().duration(750);
+    const t = svg.transition().duration(event.altKey ? 7500 : 750);
 
     path.transition(t)
-      .tween("data", d => {
-        const i = d3.interpolate(d.current, d.target);
-        return t => d.current = i(t);
-      })
-      .filter(function(d) {
-        return +this.getAttribute("fill-opacity") || arcVisible(d.target);
-      })
-      .attr("fill-opacity", d => arcVisible(d.target) ? (d.children ? 0.7 : 0.5) : 0)
-      .attrTween("d", d => () => arc(d.current));
+        .tween("data", d => {
+          const i = d3.interpolate(d.current, d.target);
+          return t => d.current = i(t);
+        })
+        .attr("fill-opacity", d => arcVisible(d.target) ? (d.children ? 0.6 : 0.4) : 0)
+        .attr("pointer-events", d => arcVisible(d.target) ? "auto" : "none")
+        .attrTween("d", d => () => arc(d.current));
 
-    label.filter(function(d) {
-      return +this.getAttribute("fill-opacity") || labelVisible(d.target);
-    }).transition(t)
+    label
+      .filter(function (d) { return +this.getAttribute("fill-opacity") || labelVisible(d.target); })
+      .transition(t)
       .attr("fill-opacity", d => +labelVisible(d.target))
       .attrTween("transform", d => () => labelTransform(d.current));
   }
 
-  function arcVisible(d) {
-    return d.y1 <= 3 && d.y0 >= 1 && d.x1 > d.x0;
+  function arcVisible(d){return d.y1<=3 && d.y0>=1 && d.x1>d.x0;}
+  function labelVisible(d){return d.y1<=3 && d.y0>=1 && (d.y1-d.y0)*(d.x1-d.x0) > 0.03;}
+  function labelTransform(d){
+    const x=(d.x0+d.x1)/2*180/Math.PI;
+    const y=(d.y0+d.y1)/2*radius;
+    return `rotate(${x-90}) translate(${y},0) rotate(${x<180?0:180})`;
   }
 
-  function labelVisible(d) {
-    return d.y1 <= 3 && d.y0 >= 1 && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.03;
-  }
-
-  function labelTransform(d) {
-    const x = (d.x0 + d.x1) / 2 * 180 / Math.PI;
-    const y = (d.y0 + d.y1) / 2 * radius;
-    return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
-  }
+  return svg.node();
 }
-
 // 2. Bar Chart by Gender - CORREGIDO
 function createGenderChart(data) {
   const margin = {top: 20, right: 30, bottom: 40, left: 60};
@@ -282,7 +279,7 @@ function createHeatmap(data) {
     .attr("width", x.bandwidth())
     .attr("height", y.bandwidth())
     .attr("fill", d => d.value > 0 ? colorScale(d.value) : "#f8f9fa")
-    .attr("stroke", "#fff")
+    .attr("stroke", "#none")
     .attr("stroke-width", 1)
     .on("mouseover", function(event, d) {
       tooltip.transition().duration(200).style("opacity", .9);
